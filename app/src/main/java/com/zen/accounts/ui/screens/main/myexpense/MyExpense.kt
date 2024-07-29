@@ -93,16 +93,6 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 
-data class MyExpenseUiState(
-    val expenseItemListAmountTextWidth: MutableState<Dp> = mutableStateOf(0.dp),
-    val showSelectCheckbox: MutableState<Boolean> = mutableStateOf(false),
-    val checkBoxMap: SnapshotStateMap<Long, Boolean> = mutableStateMapOf(),
-    val selectAll: MutableState<Boolean> = mutableStateOf(false),
-    val loadingState: MutableState<LoadingState> = mutableStateOf(LoadingState.IDLE),
-    val showDeleteDialog: MutableState<Boolean> = mutableStateOf(false),
-    val showExpenseList: MutableState<Boolean> = mutableStateOf(false),
-)
-
 data class MyExpenseUiStateHolder(
     var expenseItemListAmountTextWidth: Dp = 0.dp,
     var showSelectCheckbox: Boolean = false,
@@ -134,8 +124,8 @@ fun MyExpense(
     val myExpenseUiState by viewModel.myExpenseUiStateFlow.collectAsState()
 
     val allExpense =
-        if (!isMonthlyExpense) viewModel.allExpense
-        else viewModel.monthlyExpense
+        if (!isMonthlyExpense) viewModel.allExpense.collectAsState()
+        else viewModel.allExpense.collectAsState()
 
     BackHandler(
         myExpenseUiState.showSelectCheckbox
@@ -144,8 +134,12 @@ fun MyExpense(
     }
 
     LoadingDialog(loadingState = myExpenseUiState.loadingState)
+    
+    LaunchedEffect(key1 = Unit) {
+        viewModel.getAllExpenses()
+    }
 
-    LaunchedEffect(key1 = allExpense) {
+    LaunchedEffect(key1 = allExpense.value) {
         delay(500)
         viewModel.updateMyExpenseUiState(true, MyExpenseUiStateHolderShowExpenseList)
     }
@@ -155,7 +149,7 @@ fun MyExpense(
         updateMyExpenseUiState = viewModel::updateMyExpenseUiState,
         drawerState = drawerState,
         deleteExpenses = viewModel::deleteExpenses,
-        allExpense = allExpense,
+        allExpense = allExpense.value,
         navigateUp = navigateUp,
         currentScreen = currentScreen,
         navigateTo = navigateTo

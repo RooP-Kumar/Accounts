@@ -1,6 +1,7 @@
 package com.zen.accounts.ui.viewmodels
 
 //import com.zen.accounts.ui.screens.main.myexpense.MyExpenseUiStateHolder
+import android.util.Log
 import com.zen.accounts.db.dao.ExpenseWithOperation
 import com.zen.accounts.repository.ExpenseItemRepository
 import com.zen.accounts.repository.ExpenseRepository
@@ -18,10 +19,13 @@ import com.zen.accounts.utility.toLoadingState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
+
+private const val TAG = "MyExpenseViewModel"
 
 @HiltViewModel
 class MyExpenseViewModel @Inject constructor(
@@ -29,15 +33,17 @@ class MyExpenseViewModel @Inject constructor(
     private val expenseItemRepository: ExpenseItemRepository
 ) : BaseViewmodel() {
     var isMonthlyCalled = false
-    var allExpense: List<ExpenseWithOperation> = listOf()
+    private val _allExpense : MutableStateFlow<List<ExpenseWithOperation>> = MutableStateFlow(listOf())
+    val allExpense: StateFlow<List<ExpenseWithOperation>> = _allExpense.asStateFlow()
     var monthlyExpense: List<ExpenseWithOperation> = listOf()
-    init {
+
+    fun getAllExpenses() {
         io {
-            expenseRepository.allExpense.collectLatest {
-                allExpense = it
+            expenseRepository.allExpense.collectLatest { expense ->
+                _allExpense.update { expense }
             }
             expenseRepository.monthlyExpense.collectLatest {
-                allExpense = it
+                monthlyExpense = it
             }
         }
     }
@@ -72,7 +78,7 @@ class MyExpenseViewModel @Inject constructor(
                 MyExpenseUiStateHolderCheckBoxList -> {
                     temp.checkBoxMap = newValue.toHashMap()
                     if (!isMonthlyCalled)
-                        temp.selectAll = newValue.toHashMap().size == allExpense.size
+                        temp.selectAll = newValue.toHashMap().size == allExpense.value.size
                     else
                         temp.selectAll = newValue.toHashMap().size == monthlyExpense.size
                 }
