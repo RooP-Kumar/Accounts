@@ -27,7 +27,6 @@ class ExpenseRepository @Inject constructor(
     private val expenseApi : ExpenseApi,
     val dataStore : UserDataStore
 ) {
-    
     val allExpense : Flow<List<ExpenseWithOperation>> = expenseDao.getAllExpensesWithStatus()
     val expenses = Pager(
         PagingConfig(2)
@@ -36,7 +35,7 @@ class ExpenseRepository @Inject constructor(
     }.flow.cachedIn(CoroutineScope(Dispatchers.IO))
     
     val monthlyExpense : Flow<List<ExpenseWithOperation>> =
-        expenseDao.getMonthlyExpensesWithStatus()
+        expenseDao.getAllExpensesWithStatus()
             .map {
                 it.filter { expense ->
                     DateStringConverter().dateToString(expense.date).substring(

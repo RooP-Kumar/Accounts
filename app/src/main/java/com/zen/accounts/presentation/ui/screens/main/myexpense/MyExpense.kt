@@ -39,7 +39,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +52,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -71,6 +69,7 @@ import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.rememberLottieComposition
@@ -95,33 +94,37 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 
-private class LoadingState(initialList : List<ExpenseWithOperation>) {
+class LoadingState(initialList : List<ExpenseWithOperation>) {
     var list : SnapshotStateList<ExpenseWithOperation> =
         mutableStateListOf<ExpenseWithOperation>().apply { addAll(initialList) }
         private set
     var errorMsg : String? by mutableStateOf(null)
         private set
-    fun updateErrorMsg(value: String) {
+    var successMsg : String? by mutableStateOf(null)
+        private set
+    var initial : Boolean by mutableStateOf(true)
+    
+    fun updateErrorMsg(value : String) {
         errorMsg = value
     }
+    
+    fun updateSuccessMsg(value : String) {
+        successMsg = value
+    }
+    
     fun updateList(newValue : List<ExpenseWithOperation>) {
         list.clear()
         list.addAll(newValue)
     }
-    val isLoading = list.isEmpty()
-    val isSuccess = list.isNotEmpty()
-    val isError = errorMsg != null
-    companion object {
-        val Saver : Saver<LoadingState, *> = mapSaver(
-            save = { mapOf("list" to it.list) },
-            restore = { LoadingState((it["list"] as List<ExpenseWithOperation>))) }
-        )
-    }
+    
+    val isLoading by derivedStateOf { list.isEmpty() && errorMsg == null && successMsg == null }
+    val isSuccess by derivedStateOf { list.isNotEmpty() || successMsg != null }
+    val isError by derivedStateOf { errorMsg != null }
 }
 
 @Composable
 private fun getLoadingState(list : List<ExpenseWithOperation>) : LoadingState =
-    rememberSaveable(list) {
+    remember(list) {
         LoadingState(list)
     }
 
@@ -129,17 +132,29 @@ private fun getLoadingState(list : List<ExpenseWithOperation>) : LoadingState =
 fun MyExpense(
     drawerState : MutableState<DrawerState?>?,
     viewModel : MyExpenseViewModel,
-    isMonthlyExpense : Boolean,
+    isMonthlyExpense : Boolean = false,
+    loadingState : LoadingState = getLoadingState(emptyList()),
     navigateUp : () -> Boolean,
     currentScreen : Screen?,
     navigateTo : (Expense) -> Unit
 ) {
     viewModel.isMonthlyCalled = isMonthlyExpense
-    val allExpense =
-        if (!isMonthlyExpense) viewModel.allExpense
-        else viewModel.monthlyExpense
-    val loadingState = getLoadingState(list = allExpense)
-    LoadingDialog(showDialog = getLoadingState(list = allExpense).isLoading)
+    val allExpense by
+        if (!isMonthlyExpense) viewModel.allExpense.collectAsStateWithLifecycle(initialValue = emptyList())
+        else viewModel.monthlyExpense.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    LaunchedEffect(allExpense) {
+        if (allExpense.isNotEmpty()) {
+            loadingState.updateList(allExpense)
+        } else {
+            delay(1000)
+            loadingState.updateSuccessMsg("List is Empty.")
+        }
+    }
+    if(!loadingState.initial) {
+        LoadingDialog(showDialog = loadingState.isLoading)
+    }
+    
     MyExpense(
         loadingState,
         drawerState,
@@ -147,7 +162,6 @@ fun MyExpense(
         navigateTo,
         navigateUp
     )
-    
 }
 
 @Composable
@@ -158,23 +172,39 @@ private fun MyExpense(
     navigateTo : (Expense) -> Unit,
     navigateUp : () -> Boolean
 ) {
-    Crossfade(targetState = loadingState.list, label = "Main screen cross-fade.") { target ->
+    Crossfade(
+        targetState = loadingState.isSuccess,
+        label = "Cross-fade animation layout"
+    ) { target ->
         if(loadingState.isLoading) {
-            // Handle the loading activity.
-            CircularProgressIndicator()
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    RotatingSyncImage()
+                    Text(
+                        text = "Syncing.....",
+                        textAlign = TextAlign.Center,
+                        style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
+                    )
+                }
+            }
         }
-        else if (loadingState.isSuccess) {
-            // Handle Success activity.
-            // Use target as list.
+        if (target) {
+            // Handle Success Activity.
             SuccessScreen(
-                list = target,
+                loadingState.successMsg ?: "",
+                list = loadingState.list,
                 drawerState,
                 deleteExpenses,
                 navigateUp,
                 navigateTo
             )
-        }
-        else if (loadingState.isError) {
+        } else if (loadingState.isError) {
             // Handle Error activity.
             ErrorComp()
         }
@@ -183,14 +213,15 @@ private fun MyExpense(
 
 @Composable
 private fun SuccessScreen(
-    list: List<ExpenseWithOperation>,
+    successMsg : String,
+    list : List<ExpenseWithOperation>,
     drawerState : MutableState<DrawerState?>?,
     deleteExpenses : (List<Long>) -> Unit,
     navigateUp : () -> Boolean,
     navigateTo : (Expense) -> Unit
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp
-    val isShowList by rememberSaveable {
+    val isShowList by remember {
         derivedStateOf {
             list.isNotEmpty()
         }
@@ -238,41 +269,27 @@ private fun SuccessScreen(
                 .pointerInput(Unit) {}
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (isShowList) {
-                var rotation by remember { mutableFloatStateOf(0f) }
-                val infiniteTransition = rememberInfiniteTransition(label = "")
-                rotation = infiniteTransition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 360f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(durationMillis = 1000, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart
-                    ), label = ""
-                ).value
-                
+            if (!isShowList) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
+                    val lottieComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.empty_list))
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_sync),
-                            contentDescription = "Rotating Icon",
-                            tint = primary_color,
+                        LottieAnimation(
+                            composition = lottieComposition,
                             modifier = Modifier
-                                .size(48.dp)
-                                .graphicsLayer {
-                                    rotationZ = rotation
-                                }
+                                .size(350.dp, 350.dp),
+                            contentScale = ContentScale.Fit
                         )
-                        
                         Text(
-                            text = "Syncing.....",
-                            textAlign = TextAlign.Center,
-                            style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
+                            text = successMsg,
+                            style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground)
                         )
                     }
                 }
@@ -318,7 +335,7 @@ private fun SuccessScreen(
                                                 checked = selectAll,
                                                 onCheckedChange = {
                                                     if (it) {
-                                                        checkBoxSet.addAll(list.map { expenseWithOperation ->  expenseWithOperation.id })
+                                                        checkBoxSet.addAll(list.map { expenseWithOperation -> expenseWithOperation.id })
                                                     } else {
                                                         checkBoxSet.clear()
                                                     }
@@ -417,7 +434,7 @@ private fun SuccessScreen(
                                                                 navigateTo(expense.toExpense())
                                                             }
                                                         },
-                                                        onCheckChange =  { value ->
+                                                        onCheckChange = { value ->
                                                             if (!value) {
                                                                 checkBoxSet.remove(expense.id)
                                                             } else {
@@ -452,7 +469,7 @@ private fun SuccessScreen(
                                                                 navigateTo(expense.toExpense())
                                                             }
                                                         },
-                                                        onCheckChange = {value ->
+                                                        onCheckChange = { value ->
                                                             if (!value) {
                                                                 checkBoxSet.remove(expense.id)
                                                             } else {
@@ -651,4 +668,29 @@ private fun ListItemLayout(
         }
         
     }
+}
+
+@Composable
+private fun RotatingSyncImage() {
+    var rotation by remember { mutableFloatStateOf(0f) }
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    rotation = infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = ""
+    ).value
+    
+    Icon(
+        painter = painterResource(id = R.drawable.ic_sync),
+        contentDescription = "Rotating Icon",
+        tint = primary_color,
+        modifier = Modifier
+            .size(48.dp)
+            .graphicsLayer {
+                rotationZ = rotation
+            }
+    )
 }
