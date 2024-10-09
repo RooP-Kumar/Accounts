@@ -55,10 +55,6 @@ class ExpenseDetailsViewModel @Inject constructor(
                             (updatedExpenseItem.itemAmount ?: 0).toDouble()
                 )
 
-//                tempExpense.expense = tempExpense.expense.copy(totalAmount = tempExpense.expense.totalAmount +
-//                        (updatedExpenseItem.itemAmount ?: 0).toDouble())
-
-
                 tempExpense.expenseItems[itemInd] = updatedExpenseItem
                 updateExpenseDetailsUiState(
                     tempExpense.expenseItems,
