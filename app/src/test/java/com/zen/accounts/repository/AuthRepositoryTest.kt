@@ -1,7 +1,7 @@
 package com.zen.accounts.repository
 
-import com.zen.accounts.db.model.User
-import com.zen.accounts.api.AuthApi
+import com.zen.accounts.data.db.model.User
+import com.zen.accounts.data.api.AuthApi
 import dagger.hilt.android.AndroidEntryPoint
 import org.hamcrest.CoreMatchers.`is`
 import org.junit.Before
