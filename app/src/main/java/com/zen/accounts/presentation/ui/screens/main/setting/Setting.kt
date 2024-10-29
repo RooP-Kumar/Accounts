@@ -1,8 +1,6 @@
 package com.zen.accounts.presentation.ui.screens.main.setting
 
-
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -22,7 +20,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,12 +60,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.zen.accounts.R
 import com.zen.accounts.data.db.datastore.UserDataStore
 import com.zen.accounts.data.db.model.User
@@ -87,7 +84,6 @@ import com.zen.accounts.presentation.ui.screens.common.login_button_label
 import com.zen.accounts.presentation.ui.screens.common.login_screen_label
 import com.zen.accounts.presentation.ui.screens.common.logout_button_label
 import com.zen.accounts.presentation.ui.screens.common.small_logout_button_label
-import com.zen.accounts.presentation.ui.theme.AccountsThemes
 import com.zen.accounts.presentation.ui.theme.Typography
 import com.zen.accounts.presentation.ui.theme.buttonDescriptionTextStyle
 import com.zen.accounts.presentation.ui.theme.generalPadding
@@ -106,7 +102,6 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-
 
 data class SettingUiState(
     val showBackupDropDown: MutableState<Boolean> = mutableStateOf(false),
@@ -567,6 +562,7 @@ fun ScreenDialogs(
     }
 }
 
+@OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun ProfileSection(
     user: User? = null,
@@ -577,7 +573,6 @@ fun ProfileSection(
     var mobile = "1234567890"
     var email = "johndoe@example.com"
 
-
     if (user != null && user.name.isNotEmpty()) {
         name = user.name
     }
@@ -587,7 +582,6 @@ fun ProfileSection(
     if (user != null && user.email.isNotEmpty()) {
         email = user.email
     }
-
 
     Column(
         modifier = Modifier
@@ -605,6 +599,18 @@ fun ProfileSection(
                 }
                 .background(Color.LightGray)
         ) {
+            // Profile Picture using Glide.
+//            GlideImage(
+//                model = profilePicBitmap.value,
+//                contentDescription = "profile picture",
+//                loading = placeholder(R.drawable.ic_person),
+//                failure = placeholder(R.drawable.ic_person),
+//                transition = CrossFade,
+//                modifier = Modifier
+//                    .size(120.dp)
+//            )
+            
+            // Profile Picture using Coil.
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(profilePicBitmap.value)
@@ -617,6 +623,7 @@ fun ProfileSection(
                     .size(120.dp)
             )
 
+            // Image changing button.
             Text(
                 text = "Edit",
                 style = Typography.bodySmall.copy(color = MaterialTheme.colorScheme.background),
@@ -629,17 +636,21 @@ fun ProfileSection(
             )
         }
 
-
+        // User Name
         Text(
             text = name,
             textAlign = TextAlign.Center,
             style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
         )
+        
+        // User Phone number
         Text(
             text = "+91 $mobile",
             textAlign = TextAlign.Center,
             style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
         )
+        
+        // User Email
         Text(
             text = email,
             textAlign = TextAlign.Center,
@@ -663,77 +674,89 @@ fun ImagePickerSection(
         }
     }
 
+    // Launcher for requesting image from user's gallery or files.
     val requestLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
             if (it) {
                 Utility.imageCropLauncher(launcher, includeGallery.value)
             }
         }
-
-    Row(
+    
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
             .height(250.dp)
-            .then(modifier),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        Spacer(modifier = Modifier
+            .height(0.5.dp)
+            .fillMaxWidth()
+            .background(Color.White))
+        
+        Row(
             modifier = Modifier
-                .size(100.dp)
-                .generalCircleBorder(size = 100.dp)
-                .clickable {
-                    includeGallery.value = false
-                    if (context.checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                        requestLauncher.launch(android.Manifest.permission.CAMERA)
-                    } else {
-                        Utility.imageCropLauncher(launcher)
-                    }
-                }
+                .fillMaxWidth()
+                .weight(1f)
+                .then(modifier),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_camera),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
+            Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(24.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(generalPadding.times(2)))
-
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .generalCircleBorder(size = 100.dp)
-                .clickable {
-                    includeGallery.value = true
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        if (context.checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
-                            requestLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
+                    .size(100.dp)
+                    .generalCircleBorder(size = 100.dp)
+                    .clickable {
+                        includeGallery.value = false
+                        if (context.checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                            requestLauncher.launch(android.Manifest.permission.CAMERA)
                         } else {
-                            Utility.imageCropLauncher(launcher, true)
-                        }
-                    } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
-                        if (context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                            requestLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                        } else {
-                            Utility.imageCropLauncher(launcher, true)
+                            Utility.imageCropLauncher(launcher)
                         }
                     }
-                }
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_gallery),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_camera),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(24.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(generalPadding.times(2)))
+            
+            Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(24.dp)
-            )
+                    .size(100.dp)
+                    .generalCircleBorder(size = 100.dp)
+                    .clickable {
+                        includeGallery.value = true
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (context.checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                                requestLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
+                            } else {
+                                Utility.imageCropLauncher(launcher, true)
+                            }
+                        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+                            if (context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                                requestLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                            } else {
+                                Utility.imageCropLauncher(launcher, true)
+                            }
+                        }
+                    }
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_gallery),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(24.dp)
+                )
+            }
         }
     }
+    
 }
 
 

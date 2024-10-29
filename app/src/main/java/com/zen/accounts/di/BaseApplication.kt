@@ -7,16 +7,15 @@ import androidx.work.Configuration
 import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
+import com.zen.accounts.data.repositoryImpl.worker_repository.WorkRepository
+import com.zen.accounts.data.repositoryImpl.worker_repository.WorkerRepository
 import com.zen.accounts.data.workmanager.DeleteExpenseWorker
 import com.zen.accounts.data.workmanager.PeriodicWorker
 import com.zen.accounts.data.workmanager.ProfileUpdateWorker
 import com.zen.accounts.data.workmanager.UpdateExpenseWorker
 import com.zen.accounts.data.workmanager.UploadExpenseWorker
-import com.zen.accounts.data.repositoryImpl.worker_repository.WorkRepository
-import com.zen.accounts.data.repositoryImpl.worker_repository.WorkerRepository
 import com.zen.accounts.domain.repository.AuthRepository
 import dagger.hilt.android.HiltAndroidApp
-import timber.log.Timber
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -33,11 +32,6 @@ class BaseApplication: Application(), Configuration.Provider {
                 CombineWorkerFactory(workRepository, authRepository)
             )
             .build()
-
-    override fun onCreate() {
-        super.onCreate()
-        Timber.plant(Timber.DebugTree())
-    }
 }
 
 class CombineWorkerFactory(

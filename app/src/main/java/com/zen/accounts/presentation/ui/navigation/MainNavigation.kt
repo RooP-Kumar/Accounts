@@ -24,7 +24,11 @@ import com.zen.accounts.presentation.ui.screens.main.home.Home
 import com.zen.accounts.presentation.ui.screens.main.myexpense.MyExpense
 import com.zen.accounts.presentation.ui.screens.main.setting.Setting
 import com.zen.accounts.presentation.ui.theme.tweenAnimDuration
-import com.zen.accounts.presentation.ui.viewmodels.*
+import com.zen.accounts.presentation.ui.viewmodels.AddExpenseViewModel
+import com.zen.accounts.presentation.ui.viewmodels.ExpenseDetailsViewModel
+import com.zen.accounts.presentation.ui.viewmodels.HomeViewModel
+import com.zen.accounts.presentation.ui.viewmodels.MyExpenseViewModel
+import com.zen.accounts.presentation.ui.viewmodels.SettingViewModel
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 fun NavGraphBuilder.MainNavigation(appState : AppState, dataStore : UserDataStore) {
@@ -114,7 +118,6 @@ fun NavGraphBuilder.MainNavigation(appState : AppState, dataStore : UserDataStor
                 viewModel = viewModel,
                 isMonthlyExpense = false,
                 navigateUp = appState.navController::navigateUp,
-                currentScreen = getScreenRouteWithTitle().find { it.route == appState.navController.currentDestination?.route },
                 navigateTo = {
                     appState.navigate(Screen.ExpenseDetailScreen.getRoute(it))
                 })
@@ -122,7 +125,6 @@ fun NavGraphBuilder.MainNavigation(appState : AppState, dataStore : UserDataStor
         
         composable(
             route = Screen.ExpenseDetailScreen.route,
-            
             enterTransition = {
                 slideInHorizontally(
                     initialOffsetX = { it },
@@ -174,7 +176,6 @@ fun NavGraphBuilder.MainNavigation(appState : AppState, dataStore : UserDataStor
                 viewModel = viewModel,
                 isMonthlyExpense = true,
                 navigateUp = appState.navController::navigateUp,
-                currentScreen = getScreenRouteWithTitle().find { it.route == appState.navController.currentDestination?.route },
                 navigateTo = {
                     appState.navigate(Screen.ExpenseDetailScreen.getRoute(it))
                 }

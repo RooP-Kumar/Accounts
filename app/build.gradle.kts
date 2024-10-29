@@ -58,36 +58,29 @@ android {
 }
 
 dependencies {
-    implementation("androidx.test:core-ktx:1.5.0")
+    implementation("androidx.test:core-ktx:1.6.1")
+    implementation("androidx.test.ext:junit-ktx:1.2.1")
     testImplementation("junit:junit:4.13.2")
-    val navVersion = "2.7.7"
-    val workVersion = "2.9.0"
+    val navVersion = "2.8.3"
+    val workVersion = "2.9.1"
     val composeBom = platform("androidx.compose:compose-bom:2024.05.00")
 
     implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.1")
-    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material:material:1.6.7")
-    implementation("androidx.compose.material3:material3:1.2.1")
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation(composeBom)
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-
+    implementation("androidx.compose.material:material:1.7.4")
+    implementation("androidx.compose.material3:material3:1.3.0")
     implementation("com.google.android.material:material:1.12.0")
 
     // CameraX
-    implementation("androidx.camera:camera-lifecycle:1.3.3")
-    implementation("androidx.camera:camera-view:1.3.3")
-    implementation("androidx.camera:camera-camera2:1.3.3")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
 
     // Compose Navigation
     implementation("androidx.navigation:navigation-compose:$navVersion")
@@ -116,7 +109,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-auth")
@@ -127,20 +120,20 @@ dependencies {
 
     // Work Manager
     implementation("androidx.work:work-runtime-ktx:$workVersion")
-    implementation("com.google.guava:guava:31.1-jre")
+    implementation("com.google.guava:guava:33.0.0-jre")
 
     // Image Cropper
     implementation("com.vanniktech:android-image-cropper:4.5.0")
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.3.0")
+    
+    // Glide
+    implementation("com.github.bumptech.glide:compose:1.0.0-beta01")
 
     // Testing Dependencies
     // Work Manager Test
     androidTestImplementation("androidx.work:work-testing:$workVersion")
-    // HemCrest Test
-    implementation("org.hamcrest:hamcrest:2.2")
-    implementation(kotlin("reflect"))
 
     // Timber
     implementation("com.jakewharton.timber:timber:5.0.1")
@@ -151,6 +144,37 @@ dependencies {
     // lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
     
+    // --------------------------- Testing Implementations --------------------------------------
+    // Junit
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    
+    // Truth
+    testImplementation("com.google.truth:truth:1.4.4")
+    testImplementation("androidx.test.ext:truth:1.6.0")
+    androidTestImplementation("com.google.truth:truth:1.4.4")
+    androidTestImplementation("androidx.test.ext:truth:1.6.0")
+    
+    // Compose
+    androidTestImplementation(composeBom)
+    
+    // Espresso
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    
+    // Turbine
+    runtimeOnly("app.cash.turbine:turbine:1.2.0")
+    androidTestImplementation("app.cash.turbine:turbine:1.2.0")
+    
+    // Mockito-Kotlin
+    testImplementation("org.mockito:mockito-core:5.14.2")
+    androidTestImplementation("org.mockito:mockito-android:5.14.2")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    
+    // Kotlin Coroutines
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }
 
 kapt {

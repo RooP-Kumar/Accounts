@@ -37,8 +37,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,15 +46,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -64,11 +60,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -77,8 +75,7 @@ import com.zen.accounts.R
 import com.zen.accounts.data.db.dao.ExpenseWithOperation
 import com.zen.accounts.data.db.model.Expense
 import com.zen.accounts.presentation.ui.navigation.Screen
-import com.zen.accounts.presentation.ui.screens.common.LoadingDialog
-import com.zen.accounts.presentation.ui.screens.common.TopAppBar
+import com.zen.accounts.presentation.ui.screens.common.TopBarBackButton
 import com.zen.accounts.presentation.ui.screens.common.date_formatter_pattern_without_time
 import com.zen.accounts.presentation.ui.screens.common.getRupeeString
 import com.zen.accounts.presentation.ui.screens.main.expense_detail.ExpenseItemDeleteDialog
@@ -86,201 +83,379 @@ import com.zen.accounts.presentation.ui.theme.Typography
 import com.zen.accounts.presentation.ui.theme.generalPadding
 import com.zen.accounts.presentation.ui.theme.halfGeneralPadding
 import com.zen.accounts.presentation.ui.theme.primary_color
+import com.zen.accounts.presentation.ui.theme.roundedCornerShape
 import com.zen.accounts.presentation.ui.theme.secondary_color
-import com.zen.accounts.presentation.ui.theme.tweenAnimDuration
+import com.zen.accounts.presentation.ui.theme.topBarHeight
 import com.zen.accounts.presentation.ui.viewmodels.MyExpenseViewModel
 import com.zen.accounts.presentation.utility.generalBorder
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 
-class LoadingState(initialList : List<ExpenseWithOperation>) {
-    var list : SnapshotStateList<ExpenseWithOperation> =
-        mutableStateListOf<ExpenseWithOperation>().apply { addAll(initialList) }
-        private set
-    var errorMsg : String? by mutableStateOf(null)
-        private set
-    var successMsg : String? by mutableStateOf(null)
-        private set
-    var initial : Boolean by mutableStateOf(true)
-    
-    fun updateErrorMsg(value : String) {
-        errorMsg = value
-    }
-    
-    fun updateSuccessMsg(value : String) {
-        successMsg = value
-    }
-    
-    fun updateList(newValue : List<ExpenseWithOperation>) {
-        list.clear()
-        list.addAll(newValue)
-    }
-    
-    val isLoading by derivedStateOf { list.isEmpty() && errorMsg == null && successMsg == null }
-    val isSuccess by derivedStateOf { list.isNotEmpty() || successMsg != null }
-    val isError by derivedStateOf { errorMsg != null }
+sealed class ScreenLoadingState<out T>() {
+    data object Loading : ScreenLoadingState<Nothing>()
+    data class Success<T>(var value : T) : ScreenLoadingState<T>()
+    data class Error(var msg : String) : ScreenLoadingState<Nothing>()
 }
 
-@Composable
-private fun getLoadingState(list : List<ExpenseWithOperation>) : LoadingState =
-    remember(list) {
-        LoadingState(list)
-    }
+data class MyExpenseState(
+    val screenLoadingState : ScreenLoadingState<List<ExpenseWithOperation>>,
+    var showDeleteDialog : Boolean = false,
+    var selectAll : Boolean = false,
+    var showCheckBoxes : Boolean = false,
+    var checkBoxSet : Set<Long> = setOf(),
+)
 
 @Composable
 fun MyExpense(
     drawerState : MutableState<DrawerState?>?,
     viewModel : MyExpenseViewModel,
     isMonthlyExpense : Boolean = false,
-    loadingState : LoadingState = getLoadingState(emptyList()),
     navigateUp : () -> Boolean,
-    currentScreen : Screen?,
     navigateTo : (Expense) -> Unit
 ) {
-    viewModel.isMonthlyCalled = isMonthlyExpense
-    val allExpense by
-        if (!isMonthlyExpense) viewModel.allExpense.collectAsStateWithLifecycle(initialValue = emptyList())
-        else viewModel.monthlyExpense.collectAsStateWithLifecycle(initialValue = emptyList())
-    
-    LaunchedEffect(allExpense) {
-        if (allExpense.isNotEmpty()) {
-            loadingState.updateList(allExpense)
-        } else {
-            delay(1000)
-            loadingState.updateSuccessMsg("List is Empty.")
-        }
+    LaunchedEffect(key1 = Unit) {
+        viewModel.fetchList(isMonthlyExpense)
     }
-    if(!loadingState.initial) {
-        LoadingDialog(showDialog = loadingState.isLoading)
+    val uiState = viewModel.myExpenseUiState.collectAsStateWithLifecycle()
+    
+    BackHandler(
+        uiState.value.showCheckBoxes
+    ) {
+        viewModel.updateShowCheckBoxes(false)
+        viewModel.updateSelectAll(false)
+        viewModel.updateCheckBoxSet(setOf())
     }
     
     MyExpense(
-        loadingState,
         drawerState,
+        uiState.value,
         viewModel::deleteExpenses,
         navigateTo,
         navigateUp
-    )
+    ) { selectAll : Boolean?, showCheckBoxes : Boolean?, showDeleteDialog : Boolean?, checkBoxSet : Set<Long>? ->
+        selectAll?.let { viewModel.updateSelectAll(it) }
+        showCheckBoxes?.let { viewModel.updateShowCheckBoxes(it) }
+        showDeleteDialog?.let { viewModel.updateShowDeleteDialog(it) }
+        checkBoxSet?.let { viewModel.updateCheckBoxSet(it) }
+    }
 }
 
 @Composable
 private fun MyExpense(
-    loadingState : LoadingState,
     drawerState : MutableState<DrawerState?>?,
+    uiState : MyExpenseState,
     deleteExpenses : (List<Long>) -> Unit,
     navigateTo : (Expense) -> Unit,
-    navigateUp : () -> Boolean
+    navigateUp : () -> Boolean,
+    updateFunction : (Boolean?, Boolean?, Boolean?, Set<Long>?) -> Unit
 ) {
     Crossfade(
-        targetState = loadingState.isSuccess,
+        targetState = uiState.screenLoadingState,
         label = "Cross-fade animation layout"
     ) { target ->
-        if(loadingState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    RotatingSyncImage()
-                    Text(
-                        text = "Syncing.....",
-                        textAlign = TextAlign.Center,
-                        style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+        ) {
+            MyExpenseTopAppBar(
+                if (!uiState.showCheckBoxes) Screen.MyExpenseScreen.title else if (uiState.checkBoxSet.isNotEmpty()) "${uiState.checkBoxSet.size} Selected" else "Select Expenses",
+                uiState.selectAll,
+                uiState.showCheckBoxes,
+                navigateUp,
+                onCheckChange = {
+                    if (it) {
+                        updateFunction(
+                            true,
+                            null,
+                            null,
+                            uiState.checkBoxSet + ( (uiState.screenLoadingState as ScreenLoadingState.Success).value ).map { expenseWithOperation -> expenseWithOperation.id })
+                    } else {
+                        updateFunction(false, null, null, setOf())
+                    }
+                }
+            )
+            
+            when (target) {
+                is ScreenLoadingState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            RotatingSyncImage()
+                            Text(
+                                text = "Syncing.....",
+                                textAlign = TextAlign.Center,
+                                style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
+                            )
+                        }
+                    }
+                }
+                
+                is ScreenLoadingState.Success -> {
+                    // Handle Success State
+                    if (target.value.isEmpty()) {
+                        // Handle Empty List
+                        val lottieComposition by rememberLottieComposition(
+                            LottieCompositionSpec.RawRes(
+                                R.raw.empty_list
+                            )
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            LottieAnimation(
+                                composition = lottieComposition,
+                                modifier = Modifier
+                                    .size(350.dp, 350.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                            Text(
+                                text = "List is Empty.",
+                                style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground)
+                            )
+                        }
+                    } else {
+                        // Handle Non-empty list
+                        SuccessScreen(
+                            list = target.value,
+                            drawerState,
+                            uiState,
+                            deleteExpenses,
+                            navigateUp,
+                            navigateTo,
+                            updateFunction
+                        )
+                    }
+                }
+                
+                is ScreenLoadingState.Error -> {
+                    ErrorComp()
                 }
             }
-        }
-        if (target) {
-            // Handle Success Activity.
-            SuccessScreen(
-                loadingState.successMsg ?: "",
-                list = loadingState.list,
-                drawerState,
-                deleteExpenses,
-                navigateUp,
-                navigateTo
-            )
-        } else if (loadingState.isError) {
-            // Handle Error activity.
-            ErrorComp()
         }
     }
 }
 
 @Composable
 private fun SuccessScreen(
-    successMsg : String,
     list : List<ExpenseWithOperation>,
     drawerState : MutableState<DrawerState?>?,
+    uiState : MyExpenseState,
     deleteExpenses : (List<Long>) -> Unit,
     navigateUp : () -> Boolean,
-    navigateTo : (Expense) -> Unit
+    navigateTo : (Expense) -> Unit,
+    updateFunction : (Boolean?, Boolean?, Boolean?, Set<Long>?) -> Unit
 ) {
-    val screenWidth = LocalConfiguration.current.screenWidthDp
-    val isShowList by remember {
-        derivedStateOf {
-            list.isNotEmpty()
-        }
+    val screenWidth = with(LocalDensity.current) {
+        LocalConfiguration.current.screenWidthDp
     }
-    var showDeleteDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
-    var selectAll by rememberSaveable {
-        mutableStateOf(false)
-    }
-    var showCheckBoxes by remember {
-        mutableStateOf(false)
-    }
-    val checkBoxSet = rememberSaveable {
-        mutableSetOf<Long>()
-    }
-    
-    BackHandler(
-        selectAll
-    ) {
-        showCheckBoxes = false
-    }
-    
-    val interactionSource = remember { MutableInteractionSource() }
-    val longPressed =
-        interactionSource.collectIsPressedAsState()
-    if (longPressed.value) {
-        showCheckBoxes = true
-    }
-    
+    val layoutType = if (screenWidth >= 500) "grid" else "list"
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .pointerInput(Unit) {}
+            .background(MaterialTheme.colorScheme.background),
+        verticalArrangement = Arrangement.Center
     ) {
-        TopAppBar(
-            drawerState = drawerState,
-            navigateUp = navigateUp,
-            currentScreen = Screen.MyExpenseScreen
-        )
-        
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {}
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            if (!isShowList) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val lottieComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.empty_list))
+        fun handleSelects(id : Long) {
+            val temp = uiState.checkBoxSet.toMutableSet()
+            if (!temp.contains(id)) {
+                temp.add(id)
+            } else {
+                temp.remove(id)
+            }
+            updateFunction(temp.size == list.size, null, null, temp)
+        }
+        Crossfade(
+            targetState = list.isNotEmpty(),
+            label = "my expense screen",
+        ) { allExpenseIsNoEmpty ->
+            when (allExpenseIsNoEmpty) {
+                true -> {
+                    val animateShowList = remember { mutableStateOf(false) }
+                    val screenHeight = LocalConfiguration.current.screenHeightDp
+                    LaunchedEffect(key1 = Unit) {
+                        delay(100)
+                        animateShowList.value = true
+                    }
+                    Column {
+                        ExpenseItemDeleteDialog(
+                            showDialog = uiState.showDeleteDialog,
+                            onYes = {
+                                if (uiState.checkBoxSet.size == list.size) {
+                                    updateFunction(false, false, false, null)
+                                } else {
+                                    updateFunction(null, null, false, null)
+                                }
+                                deleteExpenses(uiState.checkBoxSet.toList())
+                            },
+                            onNo = {
+                                updateFunction(null, null, false, null)
+                            }
+                        )
+                        
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            val tempModifier = Modifier
+                                .padding(generalPadding)
+                                .weight(1f)
+                                .generalBorder()
+                                .padding(
+                                    end = generalPadding,
+                                    top = halfGeneralPadding,
+                                    bottom = halfGeneralPadding
+                                )
+                            when (layoutType) {
+                                "list" -> {
+                                    LazyColumn(
+                                        modifier = tempModifier
+                                    ) {
+                                        items(
+                                            list,
+                                            key = { it.id }) { expense ->
+                                            val interactionSource =
+                                                remember { MutableInteractionSource() }
+                                            val longPressed =
+                                                interactionSource.collectIsPressedAsState()
+                                            if (longPressed.value) {
+                                                updateFunction(null, true, null, null)
+                                            }
+                                            
+                                            ListItemLayout(
+                                                interactionSource,
+                                                expense = expense,
+                                                showCheckBox = uiState.showCheckBoxes,
+                                                selected = uiState.checkBoxSet.contains(
+                                                    expense.id
+                                                ),
+                                                onItemClick = {
+                                                    if (uiState.showCheckBoxes) {
+                                                        handleSelects(expense.id)
+                                                    } else {
+                                                        navigateTo(expense.toExpense())
+                                                    }
+                                                },
+                                                onCheckChange = {
+                                                    handleSelects(expense.id)
+                                                },
+                                                navigateTo = navigateTo,
+                                            )
+                                        }
+                                        
+                                    }
+                                }
+                                
+                                "grid" -> {
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Fixed(2),
+                                        modifier = tempModifier
+                                    ) {
+                                        items(
+                                            list,
+                                            key = { it.id }) { expense ->
+                                            val interactionSource =
+                                                remember { MutableInteractionSource() }
+                                            val longPressed =
+                                                interactionSource.collectIsPressedAsState()
+                                            if (longPressed.value) {
+                                                updateFunction(null, true, null, null)
+                                            }
+                                            
+                                            ListItemLayout(
+                                                interactionSource,
+                                                expense = expense,
+                                                showCheckBox = uiState.showCheckBoxes,
+                                                selected = uiState.checkBoxSet.contains(
+                                                    expense.id
+                                                ),
+                                                onItemClick = {
+                                                    if (uiState.showCheckBoxes) {
+                                                        handleSelects(expense.id)
+                                                    } else {
+                                                        navigateTo(expense.toExpense())
+                                                    }
+                                                },
+                                                onCheckChange = {
+                                                    handleSelects(expense.id)
+                                                },
+                                                navigateTo = navigateTo,
+                                            )
+                                        }
+                                        
+                                    }
+                                }
+                            }
+                            
+                            AnimatedVisibility(visible = uiState.showCheckBoxes) {
+                                Row {
+                                    Text(
+                                        text = "Cancel",
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                updateFunction(
+                                                    false,
+                                                    false,
+                                                    null,
+                                                    setOf()
+                                                )
+                                            }
+                                            .background(MaterialTheme.colorScheme.secondary)
+                                            .padding(vertical = generalPadding)
+                                    )
+                                    Spacer(
+                                        modifier = Modifier
+                                            .width(1.dp)
+                                            .background(MaterialTheme.colorScheme.background)
+                                    )
+                                    Text(
+                                        text = "Delete",
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                updateFunction(
+                                                    null,
+                                                    null,
+                                                    true,
+                                                    null
+                                                )
+                                            }
+                                            .background(MaterialTheme.colorScheme.secondary)
+                                            .padding(vertical = generalPadding)
+                                    )
+                                }
+                            }
+                            
+                        }
+                    }
+                }
+                
+                false -> {
+                    val lottieComposition by rememberLottieComposition(
+                        LottieCompositionSpec.RawRes(
+                            R.raw.empty_list
+                        )
+                    )
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.Center),
+                            .fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        
                         LottieAnimation(
                             composition = lottieComposition,
                             modifier = Modifier
@@ -288,230 +463,9 @@ private fun SuccessScreen(
                             contentScale = ContentScale.Fit
                         )
                         Text(
-                            text = successMsg,
-                            style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground)
+                            text = "No items added!",
+                            style = Typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground)
                         )
-                    }
-                }
-            } else {
-                Crossfade(
-                    targetState = list.isNotEmpty(),
-                    label = "my expense screen",
-                ) { allExpenseIsNoEmpty ->
-                    when (allExpenseIsNoEmpty) {
-                        true -> {
-                            val animateShowList = remember { mutableStateOf(false) }
-                            val screenHeight = LocalConfiguration.current.screenHeightDp
-                            LaunchedEffect(key1 = Unit) {
-                                delay(100)
-                                animateShowList.value = true
-                            }
-                            Column {
-                                ExpenseItemDeleteDialog(
-                                    showDialog = showDeleteDialog,
-                                    onYes = {
-                                        deleteExpenses(emptyList())
-                                        showDeleteDialog = false
-                                    },
-                                    onNo = {
-                                        showDeleteDialog = false
-                                    }
-                                )
-                                
-                                Column {
-                                    AnimatedVisibility(
-                                        visible = showCheckBoxes,
-                                        enter = fadeIn() + slideInVertically(tween(300)) { value -> -1 * value },
-                                        exit = fadeOut() + slideOutVertically(tween(300)) { value -> -1 * value }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = generalPadding),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            
-                                            Checkbox(
-                                                checked = selectAll,
-                                                onCheckedChange = {
-                                                    if (it) {
-                                                        checkBoxSet.addAll(list.map { expenseWithOperation -> expenseWithOperation.id })
-                                                    } else {
-                                                        checkBoxSet.clear()
-                                                    }
-                                                    selectAll = false
-                                                },
-                                                colors = CheckboxDefaults.colors().copy(
-                                                    checkedBoxColor = primary_color,
-                                                    uncheckedBoxColor = MaterialTheme.colorScheme.background,
-                                                    checkedCheckmarkColor = Color.White,
-                                                    uncheckedCheckmarkColor = Color.Gray,
-                                                    checkedBorderColor = MaterialTheme.colorScheme.background,
-                                                    uncheckedBorderColor = Color.Gray
-                                                )
-                                            )
-                                            
-                                            Text(
-                                                text = if (selectAll) "Deselect All" else "Select All",
-                                                style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
-                                            )
-                                            
-                                            Spacer(modifier = Modifier.weight(1f))
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .clip(CircleShape)
-                                                    .clickable {
-                                                        showDeleteDialog = true
-                                                    }
-                                                    .background(secondary_color)
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.ic_bin),
-                                                    contentDescription = "delete icon",
-                                                    modifier = Modifier
-                                                        .align(Alignment.Center)
-                                                        .padding(8.dp),
-                                                    tint = primary_color
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(generalPadding))
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .clip(CircleShape)
-                                                    .clickable {
-                                                        showCheckBoxes = false
-                                                        selectAll = false
-                                                    }
-                                                    .background(secondary_color)
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.ic_close),
-                                                    contentDescription = "delete icon",
-                                                    modifier = Modifier
-                                                        .align(Alignment.Center)
-                                                        .padding(6.dp),
-                                                    tint = primary_color
-                                                )
-                                            }
-                                        }
-                                    }
-                                    
-                                    AnimatedVisibility(
-                                        visible = animateShowList.value,
-                                        enter = slideInVertically(tween(tweenAnimDuration - 100)) { it + screenHeight },
-                                        exit = slideOutVertically(tween(tweenAnimDuration)) { screenHeight }
-                                    ) {
-                                        val tempModifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(generalPadding)
-                                            .generalBorder()
-                                            .padding(
-                                                end = generalPadding,
-                                                top = halfGeneralPadding,
-                                                bottom = halfGeneralPadding
-                                            )
-                                        if (screenWidth <= 500) {
-                                            LazyColumn(
-                                                modifier = tempModifier
-                                            ) {
-                                                items(
-                                                    list,
-                                                    key = { it.id }) { expense ->
-                                                    ListItemLayout(
-                                                        interactionSource,
-                                                        expense = expense,
-                                                        showCheckBox = showCheckBoxes,
-                                                        onItemClick = {
-                                                            if (showCheckBoxes) {
-                                                                if (checkBoxSet.contains(expense.id)) {
-                                                                    checkBoxSet.remove(expense.id)
-                                                                } else {
-                                                                    checkBoxSet.add(expense.id)
-                                                                }
-                                                            } else {
-                                                                navigateTo(expense.toExpense())
-                                                            }
-                                                        },
-                                                        onCheckChange = { value ->
-                                                            if (!value) {
-                                                                checkBoxSet.remove(expense.id)
-                                                            } else {
-                                                                checkBoxSet.add(expense.id)
-                                                            }
-                                                        },
-                                                        navigateTo = navigateTo,
-                                                    )
-                                                }
-                                                
-                                            }
-                                        } else {
-                                            LazyVerticalGrid(
-                                                columns = GridCells.Fixed(2),
-                                                modifier = tempModifier
-                                            ) {
-                                                items(
-                                                    list,
-                                                    key = { it.id }) { expense ->
-                                                    ListItemLayout(
-                                                        interactionSource,
-                                                        expense = expense,
-                                                        showCheckBox = showCheckBoxes,
-                                                        onItemClick = {
-                                                            if (showCheckBoxes) {
-                                                                if (checkBoxSet.contains(expense.id)) {
-                                                                    checkBoxSet.remove(expense.id)
-                                                                } else {
-                                                                    checkBoxSet.add(expense.id)
-                                                                }
-                                                            } else {
-                                                                navigateTo(expense.toExpense())
-                                                            }
-                                                        },
-                                                        onCheckChange = { value ->
-                                                            if (!value) {
-                                                                checkBoxSet.remove(expense.id)
-                                                            } else {
-                                                                checkBoxSet.add(expense.id)
-                                                            }
-                                                        },
-                                                        navigateTo = navigateTo,
-                                                    )
-                                                }
-                                                
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        false -> {
-                            val lottieComposition by rememberLottieComposition(
-                                LottieCompositionSpec.RawRes(
-                                    R.raw.empty_list
-                                )
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.Center),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                
-                                LottieAnimation(
-                                    composition = lottieComposition,
-                                    modifier = Modifier
-                                        .size(350.dp, 350.dp),
-                                    contentScale = ContentScale.Fit
-                                )
-                                Text(
-                                    text = "No items added!",
-                                    style = Typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground)
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -534,8 +488,9 @@ private fun ListItemLayout(
     interactionSource : MutableInteractionSource,
     expense : ExpenseWithOperation,
     showCheckBox : Boolean,
-    onItemClick : () -> Unit,
-    onCheckChange : (Boolean) -> Unit,
+    selected : Boolean,
+    onItemClick : (ExpenseWithOperation) -> Unit,
+    onCheckChange : () -> Unit,
     navigateTo : (Expense) -> Unit,
 ) {
     Row(
@@ -550,34 +505,24 @@ private fun ListItemLayout(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = {
-                    onItemClick()
+                    onItemClick(expense)
                 }
             )
             .background(MaterialTheme.colorScheme.secondary)
             .padding(vertical = generalPadding)
             .padding(end = generalPadding),
         verticalAlignment = Alignment.CenterVertically
-    
     ) {
-        
         AnimatedVisibility(
             visible = showCheckBox
         ) {
-            Checkbox(
-                checked = showCheckBox,
-                onCheckedChange = { value ->
-                    onCheckChange(value)
-                },
-                colors = CheckboxDefaults.colors()
-                    .copy(
-                        checkedBoxColor = MaterialTheme.colorScheme.background,
-                        uncheckedBoxColor = MaterialTheme.colorScheme.background,
-                        checkedCheckmarkColor = primary_color,
-                        uncheckedCheckmarkColor = Color.Gray,
-                        checkedBorderColor = primary_color,
-                        uncheckedBorderColor = Color.Gray
-                    )
-            )
+            MyExpenseCheckBox(
+                modifier = Modifier
+                    .padding(horizontal = generalPadding),
+                checked = selected
+            ) {
+                onCheckChange()
+            }
         }
         Column(
             modifier = Modifier
@@ -693,4 +638,90 @@ private fun RotatingSyncImage() {
                 rotationZ = rotation
             }
     )
+}
+
+@Composable
+fun BoxAnimatedVisibility(
+    visible : Boolean,
+    content : @Composable () -> Unit
+) {
+    AnimatedVisibility(
+        modifier = Modifier
+            .zIndex(100f)
+            .padding(horizontal = generalPadding)
+            .padding(generalPadding)
+            .clip(roundedCornerShape),
+        visible = visible,
+        enter = slideInVertically(initialOffsetY = { -300 }) + fadeIn(),
+        exit = fadeOut() + slideOutVertically(targetOffsetY = { -300 })
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun MyExpenseTopAppBar(
+    titleText : String,
+    selectAll : Boolean,
+    showCheckBoxes : Boolean,
+    navigateUp : () -> Boolean,
+    onCheckChange : (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(topBarHeight),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!showCheckBoxes) {
+            TopBarBackButton(navigateUp = navigateUp)
+        } else {
+            MyExpenseCheckBox(
+                modifier = Modifier
+                    .padding(start = 24.dp),
+                checked = selectAll
+            ) {
+                onCheckChange(it)
+            }
+        }
+        
+        Text(
+            text = titleText,
+            style = Typography.bodyLarge.copy(MaterialTheme.colorScheme.onBackground),
+            modifier = Modifier
+                .padding(generalPadding)
+                .weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun MyExpenseCheckBox(
+    modifier : Modifier = Modifier,
+    checked : Boolean,
+    clicked : (Boolean) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .then(modifier)
+            .size(20.dp)
+            .clip(CircleShape)
+            .clickable {
+                clicked(!checked)
+            }
+            .background(if (checked) primary_color else MaterialTheme.colorScheme.background)
+            .border(width = 1.dp, color = primary_color, shape = CircleShape)
+            .padding(3.dp)
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Check Sign",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.Center)
+            )
+        }
+    }
+    
 }

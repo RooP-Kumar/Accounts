@@ -56,7 +56,7 @@ interface ExpenseDao {
                 "ON e.id = b.expenseId " +
                 "ORDER BY e.id DESC" // e.id is Long value of currentTime in millis at the time of creation of the record.
     )
-    fun getMonthlyExpensesWithStatus() : Flow<List<ExpenseWithOperation>>
+    fun getExpensesWithStatusForTesting() : Flow<List<ExpenseWithOperation>>
 
     @Query("SELECT * FROM expenses")
     fun getAllExpenses() : Flow<List<Expense>>
