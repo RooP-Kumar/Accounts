@@ -1,7 +1,6 @@
 package com.zen.accounts.presentation.ui.viewmodels
 
-import androidx.core.text.isDigitsOnly
-import com.zen.accounts.data.api.resource.Resource
+import androidx.lifecycle.viewModelScope
 import com.zen.accounts.data.db.datastore.UserDataStore
 import com.zen.accounts.data.db.model.User
 import com.zen.accounts.domain.repository.AuthRepository
@@ -13,13 +12,13 @@ import com.zen.accounts.presentation.ui.screens.auth.register.registerUiStateHol
 import com.zen.accounts.presentation.ui.screens.auth.register.registerUiStateHolder_showEmailError
 import com.zen.accounts.presentation.ui.screens.auth.register.registerUiStateHolder_showPassError
 import com.zen.accounts.presentation.ui.screens.common.LoadingState
-import com.zen.accounts.presentation.ui.screens.common.success_register
-import com.zen.accounts.presentation.utility.io
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.reflect.KMutableProperty1
 
@@ -66,68 +65,79 @@ class RegisterScreenViewModel @Inject constructor(
 
     // <---------------------------- Business Logic Starts----------------------->
     fun registerUser() {
-        val emailRegex =
-            """^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""".toRegex()
-        val passwordRegex = """^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%]).{6,}$""".toRegex()
-        io {
-            val email = registerUiStateHolder.value.email
-            val pass = registerUiStateHolder.value.password
-
-            if (email.trim().isEmpty()) {
-                updateState(registerUiStateHolder_emailRequired to true)
-            } else if (pass.trim().isEmpty()) {
-                updateState(registerUiStateHolder_passRequired to true)
-            } else if (!registerUiStateHolder.value.phone.isDigitsOnly() || (registerUiStateHolder.value.phone.isNotEmpty() && registerUiStateHolder.value.phone.length != 10)) {
-                updateCommonUiState(true, "Phone number should contains only 10 numbers or empty.")
-            } else {
-                if (!emailRegex.matches(email)) {
-                    updateState(registerUiStateHolder_showEmailError to true)
-                } else if (!passwordRegex.matches(pass)) {
-                    updateState(registerUiStateHolder_showPassError to true)
-                } else {
-                    val newUser = User(
-                        name = registerUiStateHolder.value.name,
-                        email = email,
-                        phone = registerUiStateHolder.value.phone
-                    )
-
-                    updateState(newLoadingState = LoadingState.LOADING)
-                    when (
-                        val res = authRepository.registerUser(
-                            newUser,
-                            pass
-                        )
-                    ) {
-                        is Resource.SUCCESS -> {
-                            dataStore.saveUser(user = newUser)
-                            updateState(newLoadingState = LoadingState.SUCCESS)
-                            updateCommonUiState(snackBarText = success_register)
-                            updateState(
-                                strArgs = arrayOf(
-                                    "email" to "",
-                                    "name" to "",
-                                    "phone" to "",
-                                    "password" to ""
-                                )
-                            )
-                        }
-
-                        is Resource.FAILURE -> {
-                            updateState(newLoadingState = LoadingState.FAILURE)
-                            updateCommonUiState(snackBarText = res.message)
-                            updateState(
-                                strArgs = arrayOf(
-                                    "email" to "",
-                                    "name" to "",
-                                    "phone" to "",
-                                    "password" to ""
-                                )
-                            )
-                        }
-                    }
-                }
-            }
+        viewModelScope.launch(Dispatchers.IO) {
+            authRepository.signUpUsingRetrofit(
+                User(
+                    name = _registerUiStateHolder.value.name,
+                    phone = _registerUiStateHolder.value.phone,
+                    email =  _registerUiStateHolder.value.email,
+                    password =  _registerUiStateHolder.value.password
+                )
+            )
         }
+        
+//        val emailRegex =
+//            """^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""".toRegex()
+//        val passwordRegex = """^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%]).{6,}$""".toRegex()
+//        io {
+//            val email = registerUiStateHolder.value.email
+//            val pass = registerUiStateHolder.value.password
+//
+//            if (email.trim().isEmpty()) {
+//                updateState(registerUiStateHolder_emailRequired to true)
+//            } else if (pass.trim().isEmpty()) {
+//                updateState(registerUiStateHolder_passRequired to true)
+//            } else if (!registerUiStateHolder.value.phone.isDigitsOnly() || (registerUiStateHolder.value.phone.isNotEmpty() && registerUiStateHolder.value.phone.length != 10)) {
+//                updateCommonUiState(true, "Phone number should contains only 10 numbers or empty.")
+//            } else {
+//                if (!emailRegex.matches(email)) {
+//                    updateState(registerUiStateHolder_showEmailError to true)
+//                } else if (!passwordRegex.matches(pass)) {
+//                    updateState(registerUiStateHolder_showPassError to true)
+//                } else {
+//                    val newUser = User(
+//                        name = registerUiStateHolder.value.name,
+//                        email = email,
+//                        phone = registerUiStateHolder.value.phone
+//                    )
+//
+//                    updateState(newLoadingState = LoadingState.LOADING)
+//                    when (
+//                        val res = authRepository.registerUser(
+//                            newUser,
+//                            pass
+//                        )
+//                    ) {
+//                        is Resource.SUCCESS -> {
+//                            dataStore.saveUser(user = newUser)
+//                            updateState(newLoadingState = LoadingState.SUCCESS)
+//                            updateCommonUiState(snackBarText = success_register)
+//                            updateState(
+//                                strArgs = arrayOf(
+//                                    "email" to "",
+//                                    "name" to "",
+//                                    "phone" to "",
+//                                    "password" to ""
+//                                )
+//                            )
+//                        }
+//
+//                        is Resource.FAILURE -> {
+//                            updateState(newLoadingState = LoadingState.FAILURE)
+//                            updateCommonUiState(snackBarText = res.message)
+//                            updateState(
+//                                strArgs = arrayOf(
+//                                    "email" to "",
+//                                    "name" to "",
+//                                    "phone" to "",
+//                                    "password" to ""
+//                                )
+//                            )
+//                        }
+//                    }
+//                }
+//            }
+//        }
     }
     // <---------------------------- Business Logic End----------------------->
 

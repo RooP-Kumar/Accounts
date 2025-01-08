@@ -8,6 +8,7 @@ import com.zen.accounts.data.db.model.User
 import com.zen.accounts.domain.repository.AuthRepository
 import com.zen.accounts.domain.repository.DataStoreRepository
 import com.zen.accounts.presentation.utility.io
+import com.zen.accounts.retrofit.BackendService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -19,7 +20,8 @@ import kotlin.random.Random
 class AuthRepositoryImpl @Inject constructor (
     private val authApi: AuthApi,
     private val profileApi: ProfileApi,
-    private val dataStoreRepo: DataStoreRepository
+    private val dataStoreRepo: DataStoreRepository,
+    private val backendService : BackendService
 ) : AuthRepository {
 
     override suspend fun registerUser(user: User, pass: String) : Resource<Response<String>> {
@@ -52,7 +54,18 @@ class AuthRepositoryImpl @Inject constructor (
             authApi.logout()
         }
     }
-
+    
+    override suspend fun signUpUsingRetrofit(user : User) : Resource<Response<String>> {
+        return withContext(Dispatchers.IO) {
+            val result = backendService.signup(user)
+            return@withContext if(result.isNotEmpty()) {
+                Resource.SUCCESS(Response(result["msg"] ?: "", true, "Successful"))
+            } else {
+                Resource.FAILURE("Failure")
+            }
+        }
+    }
+    
     override suspend fun uploadProfilePic(): Resource<Response<Unit>> {
         return withContext(Dispatchers.IO){
            val pairOfUserAndProfile = userAndProfileFlow().lastOrNull()
@@ -117,5 +130,8 @@ class AuthRepositoryImpl @Inject constructor (
 
         return "$first$middleOne@$middleTwo$end"
     }
+    
+    
+    
 
 }

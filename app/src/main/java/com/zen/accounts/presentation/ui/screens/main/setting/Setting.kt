@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.zen.accounts.presentation.ui.screens.main.setting
 
 import android.content.pm.PackageManager
@@ -16,8 +18,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,9 +34,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -46,6 +49,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +94,6 @@ import com.zen.accounts.presentation.ui.theme.generalPadding
 import com.zen.accounts.presentation.ui.theme.halfGeneralPadding
 import com.zen.accounts.presentation.ui.theme.red_color
 import com.zen.accounts.presentation.ui.theme.roundedCornerShape
-import com.zen.accounts.presentation.ui.theme.tweenAnimDuration
 import com.zen.accounts.presentation.ui.viewmodels.SettingViewModel
 import com.zen.accounts.presentation.utility.LoadingScreen
 import com.zen.accounts.presentation.utility.Utility
@@ -102,6 +105,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 data class SettingUiState(
     val showBackupDropDown: MutableState<Boolean> = mutableStateOf(false),
@@ -149,6 +153,7 @@ fun Setting(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainUI(
     appState: AppState = AppState(context = LocalContext.current),
@@ -164,6 +169,11 @@ private fun MainUI(
     currentScreen: Screen?
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val bottomSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false
+    )
+    val showBottomSheet = rememberSaveable { mutableStateOf(false) }
     val screenWidth = LocalConfiguration.current.screenWidthDp
     BackHandler(uiState.showImagePickerOption.value) {
         uiState.showImagePickerOption.value = false
@@ -205,7 +215,7 @@ private fun MainUI(
                 navigateUp = navigateUp,
                 currentScreen = currentScreen
             )
-
+            
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -215,7 +225,7 @@ private fun MainUI(
                     animationSpec = tween(500),
                     label = "main screen"
                 ) {
-                    if(it == null) {
+                    if (it == null) {
                         LoadingScreen()
                     } else {
                         Column(
@@ -224,44 +234,49 @@ private fun MainUI(
                                 .background(MaterialTheme.colorScheme.background),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            if(screenWidth <= 500) {
+                            if (screenWidth <= 500) {
                                 ProfileSection(
                                     user!!,
-                                    uiState.showImagePickerOption,
+                                    {
+                                        coroutineScope.launch {
+                                            showBottomSheet.value = true
+                                            bottomSheetState.show()
+                                        }
+                                    },
                                     uiState.profilePic
                                 )
                             }
                             // <-------------------------------------------- Dark Mode Switch (Will add later) --------------------------->
-//                            Row(
-//                                modifier = Modifier
-//                                    .fillMaxWidth()
-//                                    .padding(generalPadding),
-//                                horizontalArrangement = Arrangement.SpaceBetween,
-//                                verticalAlignment = Alignment.CenterVertically
-//                            ) {
-//                                Text(
-//                                    text = "Dark Mode",
-//                                    style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
-//                                )
-//
-//                                Switch(
-//                                    checked = darkSwitchOn,
-//                                    onCheckedChange = {
-//                                        coroutineScope.launch {
-//                                            appState.dataStore.saveIsDarkMode(!darkSwitchOn)
-//                                        }
-//                                    },
-//                                    colors = SwitchDefaults.colors().copy(
-//                                        checkedBorderColor = MaterialTheme.colorScheme.onBackground,
-//                                        checkedThumbColor = MaterialTheme.colorScheme.onBackground,
-//                                        checkedTrackColor = enabled_color,
-//                                        uncheckedBorderColor = enabled_color,
-//                                        uncheckedThumbColor = enabled_color,
-//                                        uncheckedTrackColor = disabled_color
-//                                    )
-//                                )
-//                            }
-
+                            //                            Row(
+                            //                                modifier = Modifier
+                            //                                    .fillMaxWidth()
+                            //                                    .padding(generalPadding),
+                            //                                horizontalArrangement = Arrangement.SpaceBetween,
+                            //                                verticalAlignment = Alignment.CenterVertically
+                            //                            ) {
+                            //                                Text(
+                            //                                    text = "Dark Mode",
+                            //                                    style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
+                            //                                )
+                            //
+                            //                                Switch(
+                            //                                    checked = darkSwitchOn,
+                            //                                    onCheckedChange = {
+                            //                                        coroutineScope.launch {
+                            //                                            appState.dataStore.saveIsDarkMode(!darkSwitchOn)
+                            //                                        }
+                            //                                    },
+                            //                                    colors = SwitchDefaults.colors().copy(
+                            //                                        checkedBorderColor = MaterialTheme.colorScheme.onBackground,
+                            //                                        checkedThumbColor = MaterialTheme.colorScheme.onBackground,
+                            //                                        checkedTrackColor = enabled_color,
+                            //                                        uncheckedBorderColor = enabled_color,
+                            //                                        uncheckedThumbColor = enabled_color,
+                            //                                        uncheckedTrackColor = disabled_color
+                            //                                    )
+                            //                                )
+                            //                            }
+                            
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -272,9 +287,9 @@ private fun MainUI(
                                     text = "Backup",
                                     style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
                                 )
-
+                                
                                 Spacer(modifier = Modifier.weight(1f))
-
+                                
                                 AnimatedVisibility(
                                     visible = uiState.backupLoadingState.value == LoadingState.LOADING,
                                     modifier = Modifier,
@@ -291,7 +306,7 @@ private fun MainUI(
                                             }
                                     )
                                 }
-
+                                
                                 GeneralDropDown(
                                     modifier = Modifier.width(160.dp),
                                     value = uiState.backupDropDownText,
@@ -315,7 +330,7 @@ private fun MainUI(
                                     onItemClick = backupPlanChange
                                 )
                             }
-
+                            
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -327,7 +342,7 @@ private fun MainUI(
                                     text = if (user!!.isAuthenticated) small_logout_button_label else login_screen_label,
                                     style = Typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground)
                                 )
-
+                                
                                 GeneralButton(
                                     text = if (user.isAuthenticated) logout_button_label else login_button_label,
                                     modifier = Modifier
@@ -344,7 +359,7 @@ private fun MainUI(
                                         else
                                             appState.navController.navigate(auth_route)
                                     }
-
+                                    
                                 }
                             }
                         }
@@ -352,20 +367,21 @@ private fun MainUI(
                 }
             }
         }
-
-        AnimatedVisibility(
-            visible = uiState.showImagePickerOption.value,
-            modifier = Modifier
-                .align(Alignment.BottomCenter),
-            enter = slideInVertically(tween(tweenAnimDuration)) { it },
-            exit = slideOutVertically(tween(tweenAnimDuration)) { it }
-        ) {
-            ImagePickerSection(
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surface),
-                saveImageToStorage,
-                uploadUserProfilePicture
-            )
+        
+        if (showBottomSheet.value) {
+            ModalBottomSheet(
+                scrimColor = Color.Black.copy(alpha = 0.2f),
+                containerColor = MaterialTheme.colorScheme.background,
+                sheetState = bottomSheetState,
+                onDismissRequest = { showBottomSheet.value = false },
+            ) {
+                ImagePickerSection(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface),
+                    saveImageToStorage,
+                    uploadUserProfilePicture
+                )
+            }
         }
 
         GeneralSnackBar(
@@ -566,7 +582,7 @@ fun ScreenDialogs(
 @Composable
 fun ProfileSection(
     user: User? = null,
-    showImagePickerOption: MutableState<Boolean>,
+    showImagePickerOption: () -> Unit,
     profilePicBitmap: MutableState<Bitmap?>
 ) {
     var name = "John Doe"
@@ -595,7 +611,10 @@ fun ProfileSection(
                 .padding(halfGeneralPadding)
                 .clip(shape = CircleShape)
                 .clickable {
-                    showImagePickerOption.value = true
+                    Timber
+                        .tag("Setting Screen")
+                        .log(100, "Running on button click.")
+                    showImagePickerOption()
                 }
                 .background(Color.LightGray)
         ) {
@@ -681,96 +700,86 @@ fun ImagePickerSection(
                 Utility.imageCropLauncher(launcher, includeGallery.value)
             }
         }
-    
-    Column(
-        modifier = Modifier
-            .height(250.dp)
-    ) {
-        Spacer(modifier = Modifier
-            .height(0.5.dp)
-            .fillMaxWidth()
-            .background(Color.White))
-        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .height(250.dp)
                 .then(modifier),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .generalCircleBorder(size = 100.dp)
-                    .clickable {
-                        includeGallery.value = false
-                        if (context.checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                            requestLauncher.launch(android.Manifest.permission.CAMERA)
-                        } else {
-                            Utility.imageCropLauncher(launcher)
-                        }
-                    }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_camera),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
+                Box(
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(24.dp)
+                        .size(100.dp)
+                        .generalCircleBorder(size = 100.dp)
+                        .clickable {
+                            includeGallery.value = false
+                            if (context.checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                                requestLauncher.launch(android.Manifest.permission.CAMERA)
+                            } else {
+                                Utility.imageCropLauncher(launcher)
+                            }
+                        }
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_camera),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(24.dp)
+                    )
+                }
+                
+                Text(
+                    text = "Camera",
                 )
             }
             
             Spacer(modifier = Modifier.width(generalPadding.times(2)))
             
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .generalCircleBorder(size = 100.dp)
-                    .clickable {
-                        includeGallery.value = true
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (context.checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
-                                requestLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
-                            } else {
-                                Utility.imageCropLauncher(launcher, true)
-                            }
-                        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
-                            if (context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                                requestLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                            } else {
-                                Utility.imageCropLauncher(launcher, true)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .generalCircleBorder(size = 100.dp)
+                        .clickable {
+                            includeGallery.value = true
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                if (context.checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                                    requestLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
+                                } else {
+                                    Utility.imageCropLauncher(launcher, true)
+                                }
+                            } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+                                if (context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                                    requestLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                                } else {
+                                    Utility.imageCropLauncher(launcher, true)
+                                }
                             }
                         }
-                    }
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_gallery),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(24.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_gallery),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(24.dp)
+                    )
+                }
+                
+                Text(
+                    text = "Gallery",
+                    textAlign = TextAlign.Center
                 )
             }
         }
-    }
     
 }
-
-
-//@Preview(
-//    apiLevel = 34,
-//    uiMode = Configuration.UI_MODE_NIGHT_YES
-//)
-//@Preview(
-//    apiLevel = 34,
-//    uiMode = Configuration.UI_MODE_NIGHT_NO
-//)
-//@Composable
-//private fun PreviewSetting() {
-//    AccountsThemes {
-//        MainUI(user = User().copy(name = "Roop Kumar"), currentScreen = null, navigateUp = {true})
-//    }
-//}

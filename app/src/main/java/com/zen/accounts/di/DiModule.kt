@@ -16,6 +16,7 @@ import com.zen.accounts.domain.repository.DataStoreRepository
 import com.zen.accounts.presentation.states.AppState
 import com.zen.accounts.presentation.utility.DateDeSerializerForApi
 import com.zen.accounts.presentation.utility.DateSerializerForApi
+import com.zen.accounts.retrofit.BackendService
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -67,9 +68,14 @@ object DiModule {
     @Provides
     fun getRetrofit(gson : Gson) : Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://192.168.31.14:9090")
+            .baseUrl("https://g709181n-3000.inc1.devtunnels.ms/api/")
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
+    }
+    
+    @Provides
+    fun getBackendService(retrofit : Retrofit) : BackendService {
+        return retrofit.create(BackendService::class.java)
     }
 
     @Provides
