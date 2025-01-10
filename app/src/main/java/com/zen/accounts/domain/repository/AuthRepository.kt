@@ -14,6 +14,4 @@ interface AuthRepository {
     suspend fun registerUser(user: User, pass: String) : Resource<Response<String>>
 
     suspend fun logout()
-    
-    suspend fun signUpUsingRetrofit(user: User) : Resource<Response<String>>
 }
