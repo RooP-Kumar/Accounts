@@ -20,4 +20,5 @@ interface DataStoreRepository {
     suspend fun logoutUserFromLocalDataSource() : Resource<Response<Unit>>
 
     suspend fun removeProfilePicFromLocalDataSource(): Resource<Response<Unit>>
+
 }

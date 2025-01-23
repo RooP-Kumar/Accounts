@@ -9,7 +9,13 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.zen.accounts.data.db.model.User
-import com.zen.accounts.presentation.ui.screens.common.*
+import com.zen.accounts.presentation.ui.screens.common.BackupPlan
+import com.zen.accounts.presentation.ui.screens.common.backup_plan
+import com.zen.accounts.presentation.ui.screens.common.datastore_name
+import com.zen.accounts.presentation.ui.screens.common.graph_filter_type
+import com.zen.accounts.presentation.ui.screens.common.profile_pic
+import com.zen.accounts.presentation.ui.screens.common.system_in_dark_mode
+import com.zen.accounts.presentation.ui.screens.common.user_data_store_key
 import com.zen.accounts.presentation.utility.backupPlanToString
 import com.zen.accounts.presentation.utility.stringToBackupPlan
 import com.zen.accounts.presentation.utility.stringToUser
@@ -19,14 +25,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 class UserDataStore private constructor(
     private val context : Context,
     private var userDataStoreKey : Preferences.Key<String>,
     private var systemInDarkModeKey : Preferences.Key<Boolean>,
     private var backupPlanKey : Preferences.Key<String>,
-    private var profilePicKey : Preferences.Key<ByteArray>
+    private var profilePicKey : Preferences.Key<ByteArray>,
 ) {
     class Builder(private val context: Context){
 
@@ -34,30 +39,15 @@ class UserDataStore private constructor(
         private var systemInDarkModeKey : Preferences.Key<Boolean> = booleanPreferencesKey(system_in_dark_mode)
         private var backupPlanKey : Preferences.Key<String> = stringPreferencesKey(backup_plan)
         private var profilePicKey : Preferences.Key<ByteArray> = byteArrayPreferencesKey(profile_pic)
-
-        fun userDataStoreKey(key : String = user_data_store_key) {
-            this.userDataStoreKey = stringPreferencesKey(key)
-        }
-
-        fun systemInDarkModeKey(key: String = system_in_dark_mode) {
-            this.systemInDarkModeKey = booleanPreferencesKey(key)
-        }
-
-        fun backupPlanKey(key: String = backup_plan) {
-            this.backupPlanKey = stringPreferencesKey(key)
-        }
-
-        fun profilePicKey(key: String = profile_pic) {
-            this.profilePicKey = byteArrayPreferencesKey(key)
-        }
-
+        
+        
         fun build() : UserDataStore {
             return UserDataStore(
                 context,
                 this.userDataStoreKey,
                 this.systemInDarkModeKey,
                 this.backupPlanKey,
-                this.profilePicKey
+                this.profilePicKey,
             )
         }
     }
@@ -124,15 +114,6 @@ class UserDataStore private constructor(
     suspend fun saveProfilePic(image: ByteArray) {
         context.dataStore.edit {preferences ->
             preferences[this.profilePicKey] = image
-        }
-    }
-
-    suspend fun getProfilePic() : ByteArray? {
-        return withContext(Dispatchers.IO) {
-            val preferences = context.dataStore.data.firstOrNull()
-            if (preferences != null) {
-                preferences[this@UserDataStore.profilePicKey]
-            } else null
         }
     }
 

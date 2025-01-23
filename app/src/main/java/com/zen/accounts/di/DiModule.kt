@@ -9,10 +9,15 @@ import com.zen.accounts.data.db.dao.BackupTrackerDao
 import com.zen.accounts.data.db.dao.ExpenseDao
 import com.zen.accounts.data.db.dao.ExpenseItemDao
 import com.zen.accounts.data.db.datastore.UserDataStore
+import com.zen.accounts.data.repositoryImpl.AuthRepositoryImpl
+import com.zen.accounts.data.repositoryImpl.DataStoreRepositoryImpl
+import com.zen.accounts.domain.repository.AuthRepository
+import com.zen.accounts.domain.repository.DataStoreRepository
 import com.zen.accounts.presentation.states.AppState
 import com.zen.accounts.presentation.utility.DateDeSerializerForApi
 import com.zen.accounts.presentation.utility.DateSerializerForApi
 import com.zen.accounts.retrofit.BackendService
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -79,6 +84,16 @@ object DiModule {
         return AppState(context)
     }
     
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+    @Binds
+    abstract fun getAuthRepo(repo : AuthRepositoryImpl) : AuthRepository
+    
+    @Binds
+    abstract fun getDataStore(dataStore : DataStoreRepositoryImpl) : DataStoreRepository
 }
 
 @Module

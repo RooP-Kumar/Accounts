@@ -51,6 +51,7 @@ const val user_data_store_key = "user data store key"
 const val system_in_dark_mode = "system in dark mode"
 const val backup_plan = "backup plan"
 const val profile_pic = "profile img"
+const val graph_filter_type = "graph filter type"
 
 // <------------------ Buttons Label Strings ------------------>
 const val login_button_label = "LOGIN"
@@ -118,3 +119,34 @@ const val empty_pass = "Please! Enter password"
 const val required_field = "Required fields"
 const val invalid_email = "Invalid Email"
 const val invalid_pass = "Invalid Password"
+
+// <------------------------------- Month - Int relation --------------------------->
+val monthMap = mapOf(
+    0 to "Jan",
+    1 to "Feb",
+    2 to "Mar",
+    3 to "Apr",
+    4 to "May",
+    5 to "Jun",
+    6 to "Jul",
+    7 to "Aug",
+    8 to "Sep",
+    9 to "Oct",
+    10 to "Nov",
+    11 to "Dec"
+)
+
+val dailyList = listOf(
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+)
+
+// <-------------------------------------- Graph Filter Type ---------------------------------------------->
+const val daily = "Daily"
+const val weekly = "Weekly"
+const val monthly = "Monthly"

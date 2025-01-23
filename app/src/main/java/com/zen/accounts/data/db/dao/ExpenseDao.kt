@@ -69,6 +69,9 @@ interface ExpenseDao {
 
     @Query("SELECT e.id, e.title, e.items, e.totalAmount, e.date  FROM expenses e INNER JOIN backup_tracker b on e.id = b.expenseId WHERE operation = 'update'")
     fun getUpdatedExpenses() : List<Expense>
+    
+    @Query("SELECT * FROM expenses WHERE id > :fromDate AND id < :toDate")
+    fun getExpenseInRange(fromDate : Long, toDate : Long) : Flow<List<Expense>>
 
 }
 
