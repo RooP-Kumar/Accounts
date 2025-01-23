@@ -19,7 +19,7 @@ import kotlin.random.Random
 class AuthRepositoryImpl @Inject constructor (
     private val authApi: AuthApi,
     private val profileApi: ProfileApi,
-    private val dataStoreRepo: DataStoreRepository
+    private val dataStoreRepo: DataStoreRepository,
 ) : AuthRepository {
 
     override suspend fun registerUser(user: User, pass: String) : Resource<Response<String>> {
@@ -52,7 +52,7 @@ class AuthRepositoryImpl @Inject constructor (
             authApi.logout()
         }
     }
-
+    
     override suspend fun uploadProfilePic(): Resource<Response<Unit>> {
         return withContext(Dispatchers.IO){
            val pairOfUserAndProfile = userAndProfileFlow().lastOrNull()
@@ -117,5 +117,8 @@ class AuthRepositoryImpl @Inject constructor (
 
         return "$first$middleOne@$middleTwo$end"
     }
+    
+    
+    
 
 }

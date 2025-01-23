@@ -1,6 +1,5 @@
 package com.zen.accounts.presentation.ui.screens.main.home.portrait
 
-import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,17 +27,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.zen.accounts.R
 import com.zen.accounts.presentation.ui.navigation.Screen
+import com.zen.accounts.presentation.ui.screens.auth.splash.GraphLayout
 import com.zen.accounts.presentation.ui.screens.common.add_expense_screen_label
 import com.zen.accounts.presentation.ui.screens.common.getRupeeString
 import com.zen.accounts.presentation.ui.screens.common.home_screen_label
 import com.zen.accounts.presentation.ui.screens.common.my_expense_screen_label
 import com.zen.accounts.presentation.ui.screens.main.home.HomeUiState
-import com.zen.accounts.presentation.ui.theme.AccountsThemes
 import com.zen.accounts.presentation.ui.theme.DarkBackground
 import com.zen.accounts.presentation.ui.theme.Typography
 import com.zen.accounts.presentation.ui.theme.generalPadding
@@ -52,7 +50,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomePortraitScreen(
     navigateTo: (String) -> Unit,
-    uiState: HomeUiState
+    uiState: HomeUiState,
+    filterType : String,
+    onFilterClicked : (String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     Column(
@@ -92,9 +92,13 @@ fun HomePortraitScreen(
                 modifier = Modifier
                     .then(
                         if (isSystemInDarkTheme()) {
-                            Modifier.border(0.5.dp, color = primary_color, shape = CircleShape).background(DarkBackground)
+                            Modifier
+                                .border(0.5.dp, color = primary_color, shape = CircleShape)
+                                .background(DarkBackground)
                         } else {
-                            Modifier.clip(shape = CircleShape).background(secondary_color)
+                            Modifier
+                                .clip(shape = CircleShape)
+                                .background(secondary_color)
                         }
                     )
                     .clickable {
@@ -106,7 +110,16 @@ fun HomePortraitScreen(
                 tint = primary_color
             )
         }
-
+        
+        GraphLayout(
+            yAxis = uiState.graphData.value?.first,
+            xAxis = uiState.graphData.value?.second,
+            todayDataList = listOf(0.0),
+            filterType,
+            uiState.showMonthlyProgressBar.value,
+            onFilterClicked
+        )
+        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -204,4 +217,3 @@ fun HomePortraitScreen(
         }
     }
 }
-

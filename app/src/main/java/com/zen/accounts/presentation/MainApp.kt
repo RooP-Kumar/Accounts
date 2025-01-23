@@ -2,6 +2,8 @@ package com.zen.accounts.presentation
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +62,7 @@ data class CommonUIStateHolder(
     var snackBarText : String = ""
 )
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun MainApp(
     settingViewModel: SettingViewModel,
@@ -75,6 +78,7 @@ fun MainApp(
     )
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 private fun MainUI(
     settingViewModel: SettingViewModel,
@@ -92,6 +96,7 @@ private fun MainUI(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun DrawerContent(
     appState: AppState,
@@ -164,7 +169,7 @@ fun DrawerContent(
                                 state = scrollState
                             )
                     ) {
-                        ProfileSection(user = user.value, showImagePickerOption = showImagePickerOption, profilePicBitmap = profilePicBitmap)
+                        ProfileSection(user = user.value, showImagePickerOption = {}, profilePicBitmap = profilePicBitmap)
 
                         DrawerBody(appState = appState, user = user, settingViewModel = settingViewModel, dataStore = dataStore)
 
